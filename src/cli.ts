@@ -1,12 +1,16 @@
 #!/usr/bin/env bun
 
 import { isGitRepo, detectTools } from "./detect";
+import { capture } from "./capture";
 
 const command = Bun.argv[2];
 
 switch (command) {
   case "init":
     await init();
+    break;
+  case "capture":
+    await capture();
     break;
   default:
     usage();
@@ -27,7 +31,7 @@ async function init() {
   } else {
     console.log("Detected AI coding tools:");
     for (const tool of tools) {
-      console.log(`  - ${tool.name} (${tool.markers.join(", ")})`);
+      console.log(`  - ${tool.name} (${tool.foundMarkers.join(", ")})`);
     }
   }
 }
@@ -38,5 +42,6 @@ function usage() {
 Usage: ai-trailers <command>
 
 Commands:
-  init      Initialize ai-trailers in the current repo`);
+  init      Initialize ai-trailers in the current repo
+  capture   Capture a prompt from stdin (used by tool hooks)`);
 }
