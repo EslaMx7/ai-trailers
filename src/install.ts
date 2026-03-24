@@ -1,5 +1,5 @@
 import { join, dirname } from "node:path";
-import { mkdir } from "node:fs/promises";
+import { mkdir, chmod } from "node:fs/promises";
 import { type AiTool } from "./tools";
 
 const AI_TRAILERS_MARKER = "ai-trailers";
@@ -64,5 +64,78 @@ export async function installTool(tool: AiTool, cwd: string = process.cwd()): Pr
   await mkdir(dirname(settingsPath), { recursive: true });
 
   await Bun.write(settingsPath, JSON.stringify(merged, null, 2) + "\n");
+  return true;
+}
+
+const COMMIT_MSG_HOOK = `#!/bin/sh
+# ai-trailers: append captured prompts as git trailers
+TRAILERS_FILE=".ai-trailers"
+
+if [ ! -f "$TRAILERS_FILE" ] || [ ! -s "$TRAILERS_FILE" ]; then
+  exit 0
+fi
+
+# Ensure a blank line before trailers
+echo "" >> "$1"
+
+cat "$TRAILERS_FILE" >> "$1"
+
+# Clear the file for next commit
+: > "$TRAILERS_FILE"
+`;
+
+/**
+ * Install the commit-msg git hook.
+ * If an existing commit-msg hook exists, appends our logic.
+ * Returns true if installed, false if already installed.
+ */
+export async function installGitHook(cwd: string = process.cwd()): Promise<boolean> {
+  // Resolve git hooks directory (respects core.hooksPath)
+  let hooksDir: string;
+  try {
+    const proc = Bun.spawnSync(["git", "config", "--get", "core.hooksPath"], { cwd });
+    const customPath = proc.stdout.toString().trim();
+    hooksDir = customPath || join(cwd, ".git", "hooks");
+  } catch {
+    hooksDir = join(cwd, ".git", "hooks");
+  }
+
+  const hookPath = join(hooksDir, "commit-msg");
+  const file = Bun.file(hookPath);
+
+  if (await file.exists()) {
+    const content = await file.text();
+    if (content.includes(AI_TRAILERS_MARKER)) {
+      return false;
+    }
+    // Append our logic to existing hook
+    await Bun.write(hookPath, content + "\n" + COMMIT_MSG_HOOK);
+  } else {
+    await mkdir(hooksDir, { recursive: true });
+    await Bun.write(hookPath, COMMIT_MSG_HOOK);
+  }
+
+  await chmod(hookPath, 0o755);
+  return true;
+}
+
+/**
+ * Ensure .ai-trailers is in .gitignore.
+ * Returns true if added, false if already present.
+ */
+export async function ensureGitignore(cwd: string = process.cwd()): Promise<boolean> {
+  const gitignorePath = join(cwd, ".gitignore");
+  const file = Bun.file(gitignorePath);
+
+  let content = "";
+  if (await file.exists()) {
+    content = await file.text();
+    if (content.includes(".ai-trailers")) {
+      return false;
+    }
+  }
+
+  const newline = content.length > 0 && !content.endsWith("\n") ? "\n" : "";
+  await Bun.write(gitignorePath, content + newline + ".ai-trailers\n");
   return true;
 }

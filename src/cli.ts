@@ -2,7 +2,7 @@
 
 import { isGitRepo, detectTools } from "./detect";
 import { capture } from "./capture";
-import { installTool } from "./install";
+import { installTool, installGitHook, ensureGitignore } from "./install";
 import { getToolByName } from "./tools";
 
 const command = Bun.argv[2];
@@ -49,6 +49,23 @@ async function init() {
     } else {
       console.log(`  ~ ${tool.name} hook already installed, skipping`);
     }
+  }
+
+  // Install commit-msg git hook
+  console.log("\nInstalling git commit-msg hook...");
+  const hookInstalled = await installGitHook();
+  if (hookInstalled) {
+    console.log("  + commit-msg hook installed");
+  } else {
+    console.log("  ~ commit-msg hook already installed, skipping");
+  }
+
+  // Ensure .ai-trailers is gitignored
+  const ignored = await ensureGitignore();
+  if (ignored) {
+    console.log("  + .ai-trailers added to .gitignore");
+  } else {
+    console.log("  ~ .ai-trailers already in .gitignore");
   }
 
   console.log("\nDone!");
