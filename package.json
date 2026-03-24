@@ -1,8 +1,11 @@
 {
   "name": "ai-trails",
-  "module": "index.ts",
+  "version": "0.1.0",
   "type": "module",
-  "private": true,
+  "bin": {
+    "ai-trails": "./src/cli.ts"
+  },
+  "files": ["src"],
   "devDependencies": {
     "@types/bun": "latest"
   },
