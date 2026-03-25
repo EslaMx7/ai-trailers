@@ -1,11 +1,7 @@
 import { join } from "node:path";
+import { getToolByName } from "./tools";
 
 const TRAILERS_FILE = ".ai-trailers";
-
-type HookInput = {
-  prompt?: string;
-  [key: string]: unknown;
-};
 
 function parseToolArg(): string {
   const idx = Bun.argv.indexOf("--tool");
@@ -16,27 +12,16 @@ function parseToolArg(): string {
   return Bun.argv[idx + 1];
 }
 
-async function readStdin(): Promise<string> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of Bun.stdin.stream()) {
-    chunks.push(Buffer.from(chunk));
-  }
-  return Buffer.concat(chunks).toString("utf-8");
-}
-
 export async function capture() {
   const toolName = parseToolArg();
 
-  const raw = await readStdin();
-  let input: HookInput;
-  try {
-    input = JSON.parse(raw);
-  } catch {
-    console.error("Failed to parse stdin as JSON");
+  const tool = getToolByName(toolName);
+  if (!tool) {
+    console.error(`Unknown tool: ${toolName}`);
     process.exit(1);
   }
 
-  const prompt = input.prompt?.trim();
+  const prompt = await tool.extractPrompt();
   if (!prompt) {
     process.exit(0);
   }

@@ -53,9 +53,11 @@ That's it. ai-trailers will auto-detect which AI tools are in your repo and inst
 | Tool | Hook Event | Config File |
 |------|-----------|-------------|
 | Claude Code | `UserPromptSubmit` | `.claude/settings.json` |
-| Kiro | `userPromptSubmit` | `.kiro/settings.json` |
+| Kiro | `promptSubmit` | `.kiro/hooks/ai-trailers.kiro.hook` |
 | Gemini | `BeforeAgent` | `.gemini/settings.json` |
 | Codex | `UserPromptSubmit` | `.codex/hooks.json` |
+
+> **Note:** Kiro passes the user prompt via the `USER_PROMPT` environment variable, which strips newlines from multiline prompts. This is a Kiro limitation — multiline prompts will appear as a single line in the trailers.
 
 ## Configuration
 
@@ -94,6 +96,7 @@ Add an entry to the `tools` array in `src/tools.ts`:
 {
   name: "Your Tool",
   markers: [".your-tool"],
+  extractPrompt: () => extractFromStdin({ format: "json", path: "prompt" }),
   hook: {
     hookEvent: "PromptSubmit",
     settingsPath: ".your-tool/settings.json",
@@ -110,7 +113,11 @@ Add an entry to the `tools` array in `src/tools.ts`:
 }
 ```
 
-The only requirement is that the tool's hook pipes JSON with a `prompt` field to stdin.
+Each tool defines how it extracts the prompt via `extractPrompt`. Available helpers from `src/extractors.ts`:
+
+- `extractFromStdin({ format: "json", path: "prompt" })` — parse stdin JSON and read a field by path
+- `extractFromStdin({ format: "text" })` — read stdin as plain text
+- `extractFromEnv("VAR_NAME")` — read from an environment variable
 
 ## License
 

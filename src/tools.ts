@@ -1,3 +1,5 @@
+import { extractFromStdin, extractFromEnv } from "./extractors";
+
 export type ToolHookConfig = {
   /** Hook event name used by the tool */
   hookEvent: string;
@@ -22,12 +24,15 @@ export type AiTool = {
   name: string;
   markers: string[];
   hook: ToolHookConfig;
+  /** Extract the user prompt from this tool's hook invocation */
+  extractPrompt: () => Promise<string | null>;
 };
 
 const tools: AiTool[] = [
   {
     name: "Claude Code",
     markers: ["CLAUDE.md", ".claude"],
+    extractPrompt: () => extractFromStdin({ format: "json", path: "prompt" }),
     hook: {
       hookEvent: "UserPromptSubmit",
       settingsPath: ".claude/settings.json",
@@ -51,16 +56,21 @@ const tools: AiTool[] = [
   {
     name: "Kiro",
     markers: [".kiro"],
+    extractPrompt: () => extractFromEnv("USER_PROMPT"),
     hook: {
-      hookEvent: "userPromptSubmit",
-      settingsPath: ".kiro/settings.json",
+      hookEvent: "promptSubmit",
+      settingsPath: ".kiro/hooks/ai-trailers.kiro.hook",
       generateConfig: () => ({
-        hooks: {
-          userPromptSubmit: [
-            {
-              command: `bunx ai-trailers capture --tool "Kiro"`,
-            },
-          ],
+        enabled: true,
+        name: "ai-trailers capture",
+        description: "Captures user prompts as git trailers in commit messages",
+        version: "1",
+        when: {
+          type: "promptSubmit",
+        },
+        then: {
+          type: "runCommand",
+          command: `bunx ai-trailers capture --tool "Kiro"`,
         },
       }),
     },
@@ -68,6 +78,7 @@ const tools: AiTool[] = [
   {
     name: "Gemini",
     markers: [".gemini"],
+    extractPrompt: () => extractFromStdin({ format: "json", path: "prompt" }),
     hook: {
       hookEvent: "BeforeAgent",
       settingsPath: ".gemini/settings.json",
@@ -75,6 +86,7 @@ const tools: AiTool[] = [
         hooks: {
           BeforeAgent: [
             {
+              matcher: "*",
               hooks: [
                 {
                   name: "ai-trailers-capture",
@@ -91,6 +103,7 @@ const tools: AiTool[] = [
   {
     name: "Codex",
     markers: [".codex"],
+    extractPrompt: () => extractFromStdin({ format: "json", path: "prompt" }),
     hook: {
       hookEvent: "UserPromptSubmit",
       settingsPath: ".codex/hooks.json",
