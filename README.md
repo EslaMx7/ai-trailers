@@ -2,6 +2,8 @@
 
 Capture AI coding tool prompts as git trailers in commit messages.
 
+> **WARNING:** This tool embeds your AI prompts into git commit messages. These prompts become part of your git history and will be visible to anyone with access to the repository. **Do not include secrets, credentials, personal information, or sensitive data in your prompts.** Review your commit messages before pushing to a shared or public repository. You are solely responsible for the content of your prompts.
+
 ## Why?
 
 AI coding tools are transforming how we write software. But when you look at a git history, you only see the code that changed — not the human intent that guided it.
